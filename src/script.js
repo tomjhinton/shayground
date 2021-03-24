@@ -5,37 +5,39 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 
 
-import vertexShader1 from './shaders/vertex-noise.glsl'
-import fragmentShader1 from './shaders/fragment-6.glsl'
+import vertexShader1 from './shaders/vertex.glsl'
+import fragmentShader1 from './shaders/fragment-63.glsl'
 
-
-/**
- * Base
- */
+ // * Base
+ // */
 // Debug
 
 
-
+console.log(navigator)
 
 // Canvas
 const canvas = document.querySelector('canvas.webgl')
 
 // Scene
 const scene = new THREE.Scene()
-scene.background = new THREE.Color( 0xffffff );
+// scene.background = new THREE.Color( 0xffffff )
 
 /**
  * Textures
  */
 const textureLoader = new THREE.TextureLoader()
-const texture = textureLoader.load('./textures/texture.png')
+const texture = textureLoader.load('./textures/texture.JPG')
 
 /**
  * Test mesh
  */
 
 //geometry
-const geometry =  new THREE.SphereGeometry( .51, 320, 320, 320 )
+// const geometry =  new THREE.SphereGeometry( 2, 320, 320, 160 )
+const geometry =  new THREE.PlaneGeometry( 2, 2, 128, 128)
+// const geometry = new THREE.BoxGeometry(1,1,1, 128, 128, 128)
+
+
 
 
 
@@ -46,6 +48,7 @@ const material = new THREE.ShaderMaterial({
   transparent: true,
   depthWrite: true,
   clipShadows: true,
+  wireframe: false,
   side: THREE.DoubleSide,
   uniforms: {
     uFrequency: {
@@ -63,20 +66,21 @@ const material = new THREE.ShaderMaterial({
     uMouse: {
       value: {x: 0.5, y: 0.5}
     },
-    uResolution: { type: "v2", value: new THREE.Vector2() },
+    uResolution: { type: 'v2', value: new THREE.Vector2() },
     uPosition: {
       value: {
         x: 0
       }
     },
     uRotation: {
-      value: {
+      value: 0
 
-      }
+
+
     }
   }
 })
-
+console.log(material)
 
 const mesh = new THREE.Mesh(geometry, material)
 scene.add(mesh)
@@ -126,7 +130,7 @@ window.addEventListener('resize', () =>{
  */
 // Base camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(0,0,4.5)
+camera.position.set(0,0,1.5)
 scene.add(camera)
 
 // Controls
@@ -165,8 +169,8 @@ const tick = () =>{
   material.uniforms.uRotation.value = mesh.rotation
   // console.log(material.uniforms)
 
-  mesh.rotation.y +=0.001
-  mesh.rotation.x +=0.001
+  // mesh.rotation.y +=0.005
+  // mesh.rotation.x +=0.005
   // Update controls
 
   // mesh.position.copy(camera.position)

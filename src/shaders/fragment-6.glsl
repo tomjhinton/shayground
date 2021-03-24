@@ -195,7 +195,21 @@ float strength = cnoise(rote * 30.0  );
   vec4 tex = texture2D(uTexture, vUv *sin(slowTime* .05));
     color *= tex.rgb;
     color.rgb += strength;
+    float alpha = color.r;
+    if(uv.x> .5){
+      alpha = color.g;
+      color.g += .2;
+      color.g *=tex.r;
+    }
+    if(uv.x< .5){
+      alpha += .2;
+      color.r += .2;
+    }
+    if(uv.y> .5){
+      alpha += .2;
+      color.b += .2;
+    }
 
- gl_FragColor =  vec4(color, .4) ;
+ gl_FragColor =  vec4(color, alpha) ;
 
 }

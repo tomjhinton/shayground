@@ -264,10 +264,15 @@ void main()
     // Create a sine wave from top to bottom of the sphere
     // To increase the amount of waves, we'll use uFrequency
     // To make the waves bigger we'll use uAmplitude
-    float angle = sin(uv.y * 3. + t) * 6.;
-    pos = rotateY(pos, angle);
-    pos += rotateX(pos, angle);
-    pos *= rotateZ(pos, angle);
+    float angleX = sin(uv.x * 3. + t) * 6.;
+    float angleY = sin(uv.y * 3. + t) * 6.;
+    float angleZ = sin(uv.x /uv.y * 3. + t) * .6;
+    pos = rotateY(pos, angleY);
+    // pos += rotateX(pos, angleX);
+    // pos += rotateZ(pos, angleZ);
+    // pos.z += cnoise(pos);
+
+    // pos.z += cnoise(pos) *.5;
 
     // vDistort = distortion; // Train goes to the fragment shader! Tchu tchuuu
 

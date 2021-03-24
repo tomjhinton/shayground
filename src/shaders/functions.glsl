@@ -140,7 +140,7 @@ vec3 shape( in vec2 p )
   vec2 st = p *2.-1.;
 
   // Number of sides of your shape
-  int N = 9 ;
+  int N = 3 ;
 
   // Angle and radius from the current pixel
   float a = atan(st.x,st.y)+PI ;

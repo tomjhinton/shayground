@@ -1,6 +1,6 @@
 /* @font-face {
   font-family: "ArtDystopia";
-  src: url("./ArtDystopia.otf") format("opentype");
+  src: url("./fonts/ArtDystopia.otf") format("opentype");
 } */
 *
 {
@@ -24,4 +24,12 @@ body
 
 .texture{
   /* visibility: hidden;  */
+}
+
+#messages{
+  position: fixed;
+  top: 0;
+  left: 0;
+  outline: none;
+  color: white;
 }
