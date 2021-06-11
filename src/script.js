@@ -2,11 +2,40 @@ import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
+let webcamTexture, video;
+function initWebcamCapture(){
+    video = document.createElement('video');
+    video.autoplay="";
+    video.style="display:none";
+    video.id="feedCam";
+     console.log(video)
+    if ( navigator.mediaDevices && navigator.mediaDevices.getUserMedia && video) {
+        var constraints = { video: { width: 1280, height: 720, facingMode: 'user' } };
 
+
+        navigator.mediaDevices.getUserMedia( constraints ).then( function ( stream ) {
+            video.srcObject = stream;
+            video.play();
+        } ).catch( function ( error ) {
+            console.error( 'Unable to access the camera/webcam.', error );
+
+        } );
+
+    } else {
+        console.error( 'MediaDevices interface not available.' );
+    }
+    window.video = document.getElementById('video');
+
+    webcamTexture = new THREE.VideoTexture(video);
+    webcamTexture.minFilter = THREE.LinearFilter;
+    webcamTexture.magFilter = THREE.LinearFilter;
+    webcamTexture.needsUpdate= true;
+}
+initWebcamCapture();
 
 
 import vertexShader1 from './shaders/vertex.glsl'
-import fragmentShader1 from './shaders/fragment-63.glsl'
+import fragmentShader1 from './shaders/fragment-88.glsl'
 
  // * Base
  // */
@@ -20,7 +49,7 @@ const canvas = document.querySelector('canvas.webgl')
 
 // Scene
 const scene = new THREE.Scene()
-// scene.background = new THREE.Color( 0xffffff )
+scene.background = new THREE.Color( 0xffffff )
 
 /**
  * Textures
@@ -62,6 +91,12 @@ const material = new THREE.ShaderMaterial({
     },
     uTexture: {
       value: texture
+    },
+    uVideo: {
+      value: webcamTexture
+    },
+    uVideo2: {
+      value: webcamTexture
     },
     uMouse: {
       value: {x: 0.5, y: 0.5}
@@ -134,7 +169,7 @@ camera.position.set(0,0,1.5)
 scene.add(camera)
 
 // Controls
-// const controls = new OrbitControls(camera, canvas)
+const controls = new OrbitControls(camera, canvas)
 // controls.enableDamping = true
 
 /**

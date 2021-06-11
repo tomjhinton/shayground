@@ -303,10 +303,10 @@ t = t * 0.15;
 vec2 uv = -1. + 2. * normCoord;
 
 // please play around with these numbers to get a better palette
-vec3 brightness = vec3(.6, length(uv), .9);
+vec3 brightness = vec3(sin(vTime), length(uv), cos(vTime));
 vec3 contrast = vec3(length(uv)*.5, PI, .5);
 vec3 osc = vec3(0.0,2.0,0.0);
-vec3 phase = vec3(100.,12.0,6.);
+vec3 phase = vec3(1.,12.0,6.);
 return brightness + contrast*cos( 6.28318*(osc*t+phase) );
 }
 float random (in vec2 st) {
@@ -354,66 +354,53 @@ void main(){
   vec2 uv4 = vUv;
 
 
-  vec4 tex = texture2D(uTexture, uv3);
 
   float slowTime = vTime * .05;
   float t = vTime * .25;
   float alpha = 1.;
-
-    uv = vec2(uv.x+ noisePix(rotateUV(uv, vec2(.5), PI * vTime * .05) * noisePix(uv * sin(vTime * .05) * 10.)), (sin(uv.y) * .5+ snoise(rotateUV(uv, vec2(.5), -PI * vTime * .05) * 1.5)));
-
-
+  vec3 color = vec3(0.);
   vec2 rote = rotateUV(uv, vec2(.5), PI * vTime * .05);
   vec2 roteC = rotateUV(uv, vec2(.5), -PI * vTime * .05);
-
-
-  vec2 rote1 = rotateUV(uv1, vec2(.5), PI * vTime * .02);
-  vec2 roteC1 = rotateUV(uv1, vec2(.5), -PI * vTime * .02);
-
-
-
-  float xSmoothMod = smoothMod(uv.x,.3,8.2);
-
-  float ySmoothMod = smoothMod(uv.y,.3,1.2);
-
-  float smoothMix = (tan(t - atan(uv.x/uv.y*tan(t+uv.y))*2.)+1.0)/2.0;
-
-    vec3 color = cosPalette( smoothMix);
-
-    uv.x+= mix(uv.x, xSmoothMod, smoothMix);
-  uv.y += mix(uv.y, ySmoothMod, 1.-smoothMix);
+  pMod2(uv, brownConradyDistortion(uv, 1., -sin(uv.x)+ cos(vTime * .05)));
+  uv.x += stroke(cnoise(rote * 10.), .5,.5);
+  uv.y += stroke(cnoise(roteC * uv.y * 2.), 1.4, .6);
 
 
 
-  uvRipple(color.rg,1.9);
-    uv.x = dot(uv.x, uv.y + cos(vTime * .25));
-    uv.y = dot(uv.y, uv.x + sin(vTime * .25));
 
-    color.r = stroke(noisePix(uv * 20. * cnoise(uv1 *4.) * uv.y ), .4, .2) ;
-    color.b = stroke(snoise(uv * 2. * cnoise(uv *1.) * uv.y ), .4, .2) ;
+  uv = brownConradyDistortion(uv, 1., -sin(uv.x)+ cos(vTime * .05));
+
+  color.r = sphereSDF(vec3(uv, sin(rote.x)));
+  color.g += sphereSDF(vec3(roteC, cos(rote.x)));
+  spin(color.rb, .2);
+  color.g += brownConradyDistortion(rote, 10., -10. ).x;
+  color.b += brownConradyDistortion(roteC, -7., 7. ).y;
+  uv3 += brownConradyDistortion(color.rb, -1., 1. );
+
+  // color *= stroke(polySDF(uv, 14.), .5, .3);
+
+  vec3 iri = hsb2rgb(vec3(color.x, color.y, uv.y *.3));
+  pMod2(color.zy, vec2(.5));
+  iri += vec3(tan(length(iri.xz) * 4.0 + t));
+//
+
+  // color = mix(vec3(color.rg, iri.b), vec3(iri.rg, color.b), uv3.x);
+  color += vec3(stroke(polySDF(vec2(uv.x, uv3.y), 3.), 1.5, uv.x));
+  color.r *= stroke(polySDF(vec2(uv3.x, uv.y), 3.), 1.5, uv.x);
+  color.b += stroke(polySDF(vec2(uv.x, uv3.y * sin(vTime * .05)), uv.y), uv.y, .5);
   //
-    uv2 =  brownConradyDistortion(uv2, -10., 10. * sin(vTime * .5));
-    uv1 =  brownConradyDistortion(uv2, -10., 10. * sin(vTime * .5));
-    color = mix(color, vec3(uv.x, uv.y, 1.),stroke(polySDF(uv2, 3.), .6, .5));
-  // //
-    color = mix(color, vec3(0., uv.y, uv.x),stroke(polySDF(uv1, 3.), .5, 6.5));
+  vec4 final = mix( vec4(color.br, iri.g, 1.), vec4(iri.rg, color.b, 1.), stroke(noisePix(uv * 2. * uv.y), .1, .1));
 
-    color = mix(color, vec3(uv.y, 1., 1.),stroke(polySDF(uv, 30.), .5, .5));
+  // final.b += length(.5);
   //
+  // final .g += stroke(noisePix(uv3 * 8. * uv3.y), .2, .5);
 
-    spin(color.rb, .5);
-  //   color += stroke(cnoise( uv2 *4. * cnoise(uv * 40.) ), .2, .8);
-  //
-    vec3 iri = hsb2rgb(vec3(color.x, color.y, uv.y *1.3));
-  //   pMod2(color.rg, vec2(.5));
-    iri += sin(length(rote) * 4.0 + t);
-  //
-    color = mix(color,iri,sin(t * sin(uv.y/uv.x)));
-  //   //
-    color += mix(color, vec3(uv1.x,uv1.y,1.), stroke(cnoise( uv1 *14. * noisePix(uv1 * 4. + wiggly(uv.x + vTime * .05, uv.y + (vTime * .5) * .005, 2., .6, .5)) ), .5, .8));
-  //   //
-    // color = mix(vec3(stroke(noisePix(rote * 3. + snoise(uv * 1.) ), 1.2, .8), color.x, uv.y), vec3(iri.x), stroke(noisePix(rote * 19. * snoise(uv * 1.) ), 1.2, .8));
-    gl_FragColor = vec4(color,alpha);
+    // tex.rgb -= color.grb;
+
+
+    // tex = mix(tex, 1.-tex, uv.x);
+
+  gl_FragColor = final ;
 
 
 }

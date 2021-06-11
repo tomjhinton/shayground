@@ -380,13 +380,13 @@ void main(){
 
     vec3 color = cosPalette( smoothMix);
 
-    uv.x+= mix(uv.x, xSmoothMod, smoothMix);
-  uv.y += mix(uv.y, ySmoothMod, 1.-smoothMix);
+    uv.x= mix(uv.x, xSmoothMod, smoothMix);
+    uv.y = mix(uv.y, ySmoothMod, 1.-smoothMix);
 
 
 
-  uvRipple(color.rg,1.9);
-    uv.x = dot(uv.x, uv.y + cos(vTime * .25));
+    uvRipple(color.rg,1.9);
+    color.r += dot(uv.x, uv.y + cos(vTime * .25));
     uv.y = dot(uv.y, uv.x + sin(vTime * .25));
 
     color.r = stroke(noisePix(uv * 20. * cnoise(uv1 *4.) * uv.y ), .4, .2) ;
@@ -402,15 +402,15 @@ void main(){
   //
 
     spin(color.rb, .5);
-  //   color += stroke(cnoise( uv2 *4. * cnoise(uv * 40.) ), .2, .8);
+    color *= stroke(cnoise( uv2 *4. * cnoise(uv * 40.) ), .2, .8);
   //
     vec3 iri = hsb2rgb(vec3(color.x, color.y, uv.y *1.3));
-  //   pMod2(color.rg, vec2(.5));
+    pMod2(color.rg, vec2(.5));
     iri += sin(length(rote) * 4.0 + t);
   //
-    color = mix(color,iri,sin(t * sin(uv.y/uv.x)));
+    color = mix(color,iri,sin(t * sin(uv.y+uv.x)));
   //   //
-    color += mix(color, vec3(uv1.x,uv1.y,1.), stroke(cnoise( uv1 *14. * noisePix(uv1 * 4. + wiggly(uv.x + vTime * .05, uv.y + (vTime * .5) * .005, 2., .6, .5)) ), .5, .8));
+    // color += mix(color, vec3(uv1.x,uv1.y,1.), stroke(cnoise( uv1 *14. * noisePix(uv1 * 4. + wiggly(uv.x + vTime * .05, uv.y + (vTime * .5) * .005, 2., .6, .5)) ), .5, .8));
   //   //
     // color = mix(vec3(stroke(noisePix(rote * 3. + snoise(uv * 1.) ), 1.2, .8), color.x, uv.y), vec3(iri.x), stroke(noisePix(rote * 19. * snoise(uv * 1.) ), 1.2, .8));
     gl_FragColor = vec4(color,alpha);

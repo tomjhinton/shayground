@@ -5,6 +5,8 @@ uniform vec3 uPosition;
 uniform vec3 uRotation;
 uniform vec2 uResolution;
 uniform sampler2D uTexture;
+uniform sampler2D uVideo;
+uniform sampler2D uVideo2;
 uniform vec2 uMouse;
 
 
@@ -189,8 +191,8 @@ float spiralSDF(vec2 st, float t){
 }
 
 void spin(inout vec2 p, float axis){
-  p.x += sin(vTime *.5) *axis;
-  p.y += cos(vTime *.5) *axis;
+  p.x += sin(vTime *.05) *axis;
+  p.y += cos(vTime *.05) *axis;
 }
 
 void spinC(inout vec2 p, float axis){
@@ -274,7 +276,7 @@ vec2 brownConradyDistortion(in vec2 uv, in float k1, in float k2)
     return uv;
 }
 
-#define PHI (sqrt(5)*0.5 + 0.5)
+#define PHI (sqrt(5.)*0.5 + 0.5)
 
 // https://math.stackexchange.com/questions/2491494/does-there-exist-a-smooth-approximation-of-x-bmod-y
 // found this equation and converted it to GLSL, usually e is supposed to be squared but in this case I like the way it looks as 0 //idk
@@ -303,10 +305,10 @@ t = t * 0.15;
 vec2 uv = -1. + 2. * normCoord;
 
 // please play around with these numbers to get a better palette
-vec3 brightness = vec3(.6, length(uv), .9);
+vec3 brightness = vec3(sin(vTime), length(uv), cos(vTime));
 vec3 contrast = vec3(length(uv)*.5, PI, .5);
 vec3 osc = vec3(0.0,2.0,0.0);
-vec3 phase = vec3(100.,12.0,6.);
+vec3 phase = vec3(1.,12.0,6.);
 return brightness + contrast*cos( 6.28318*(osc*t+phase) );
 }
 float random (in vec2 st) {
@@ -337,83 +339,63 @@ float noisePix (in vec2 st) {
             (d - b) * u.x * u.y;
 }
 
-void main(){
-  // //
-  // vec2 uv = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
-  // vec2 uv1 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
-  // vec2 uv2 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
-  // vec2 uv3 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
-  // vec2 uv4 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
+float add(float a, float b) {
+  return min(a, b);
+}
 
-  // vec2 uv = gl_FragCoord.xy / uResolution;
-  //
-  vec2 uv = vUv;
-  vec2 uv1 = vUv;
-  vec2 uv2 = vUv;
-  vec2 uv3 = vUv;
-  vec2 uv4 = vUv;
+float cheapNoise(vec3 stp, float mixVal) {
+     vec3 p = vec3(stp.st * .1, stp.p);
+     return mix(sin(p.z + p.x * 20. + cos(p.y * 20. - p.z)) *
+       cos(p.y * 10. + p.z + cos(p.y * 20. + p.z)),
+       sin(2. + p.x * 16. - p.z) * cos(2. + p.y*17. + p.z + cos(p.x * 20. + p.z)), mixVal);
+   }
+
+   vec2 getRadialUv(vec2 uv){
+     float angle = atan(uv.x, uv.y);
+
+     vec2 radialUv = vec2(0.);
+     radialUv.x = angle / TAU + .5;
+     radialUv.y = 1.0 - pow(1.0 -length(uv), 4.0);
+     //1.0 - pow(1.0 -length(uv), 4.0);
+
+     return radialUv;
+   }
+
+   float getElevation(vec2 uv , float num){
+     // uvRipple(uv,  .5);
+     float elevation = cnoise(uv * 15.);
+     elevation += cnoise(uv * (num * 8.)) * .2;
+     elevation += cnoise(uv * (num * 20.)) *.1;
+     elevation += cnoise(uv * (num * 90.)) * .15;
+     return elevation;
+   }
 
 
-  vec4 tex = texture2D(uTexture, uv3);
+void main() {
 
-  float slowTime = vTime * .05;
-  float t = vTime * .25;
+
+
+  vec2 uv = (gl_FragCoord.xy - uResolution * .5) / uResolution.xx + .5 ;
+
+    vec2 rote = rotateUV(uv, vec2(.5), PI * vTime * .05);
+    vec2 roteC = rotateUV(uv, vec2(.5), -PI * vTime * .05);
+
   float alpha = 1.;
 
-    uv = vec2(uv.x+ noisePix(rotateUV(uv, vec2(.5), PI * vTime * .05) * noisePix(uv * sin(vTime * .05) * 10.)), (sin(uv.y) * .5+ snoise(rotateUV(uv, vec2(.5), -PI * vTime * .05) * 1.5)));
+  vec3 color = vec3(uv.x, uv.y, 1.);
+
+  uvRipple(uv , .01);
+  rote.x = rote.x + cnoise(uv * 4.);
+  vec4 inText = texture2D(uVideo, uv);
+  vec4 inText2 = texture2D(uVideo2, rote);
+  inText.r += sin(vTime * .5);
+  inText.g += cos(vTime * .5);
+
+  vec4 final = mix(inText, inText2, rote.x);
 
 
-  vec2 rote = rotateUV(uv, vec2(.5), PI * vTime * .05);
-  vec2 roteC = rotateUV(uv, vec2(.5), -PI * vTime * .05);
+ gl_FragColor = final;
 
-
-  vec2 rote1 = rotateUV(uv1, vec2(.5), PI * vTime * .02);
-  vec2 roteC1 = rotateUV(uv1, vec2(.5), -PI * vTime * .02);
-
-
-
-  float xSmoothMod = smoothMod(uv.x,.3,8.2);
-
-  float ySmoothMod = smoothMod(uv.y,.3,1.2);
-
-  float smoothMix = (tan(t - atan(uv.x/uv.y*tan(t+uv.y))*2.)+1.0)/2.0;
-
-    vec3 color = cosPalette( smoothMix);
-
-    uv.x+= mix(uv.x, xSmoothMod, smoothMix);
-  uv.y += mix(uv.y, ySmoothMod, 1.-smoothMix);
-
-
-
-  uvRipple(color.rg,1.9);
-    uv.x = dot(uv.x, uv.y + cos(vTime * .25));
-    uv.y = dot(uv.y, uv.x + sin(vTime * .25));
-
-    color.r = stroke(noisePix(uv * 20. * cnoise(uv1 *4.) * uv.y ), .4, .2) ;
-    color.b = stroke(snoise(uv * 2. * cnoise(uv *1.) * uv.y ), .4, .2) ;
-  //
-    uv2 =  brownConradyDistortion(uv2, -10., 10. * sin(vTime * .5));
-    uv1 =  brownConradyDistortion(uv2, -10., 10. * sin(vTime * .5));
-    color = mix(color, vec3(uv.x, uv.y, 1.),stroke(polySDF(uv2, 3.), .6, .5));
-  // //
-    color = mix(color, vec3(0., uv.y, uv.x),stroke(polySDF(uv1, 3.), .5, 6.5));
-
-    color = mix(color, vec3(uv.y, 1., 1.),stroke(polySDF(uv, 30.), .5, .5));
-  //
-
-    spin(color.rb, .5);
-  //   color += stroke(cnoise( uv2 *4. * cnoise(uv * 40.) ), .2, .8);
-  //
-    vec3 iri = hsb2rgb(vec3(color.x, color.y, uv.y *1.3));
-  //   pMod2(color.rg, vec2(.5));
-    iri += sin(length(rote) * 4.0 + t);
-  //
-    color = mix(color,iri,sin(t * sin(uv.y/uv.x)));
-  //   //
-    color += mix(color, vec3(uv1.x,uv1.y,1.), stroke(cnoise( uv1 *14. * noisePix(uv1 * 4. + wiggly(uv.x + vTime * .05, uv.y + (vTime * .5) * .005, 2., .6, .5)) ), .5, .8));
-  //   //
-    // color = mix(vec3(stroke(noisePix(rote * 3. + snoise(uv * 1.) ), 1.2, .8), color.x, uv.y), vec3(iri.x), stroke(noisePix(rote * 19. * snoise(uv * 1.) ), 1.2, .8));
-    gl_FragColor = vec4(color,alpha);
 
 
 }

@@ -360,7 +360,7 @@ void main(){
   float t = vTime * .25;
   float alpha = 1.;
 
-    uv = vec2(uv.x+ noisePix(rotateUV(uv, vec2(.5), PI * vTime * .05) * noisePix(uv * sin(vTime * .05) * 10.)), (sin(uv.y) * .5+ snoise(rotateUV(uv, vec2(.5), -PI * vTime * .05) * 1.5)));
+    uv = vec2(uv.x+ noisePix(rotateUV(uv, vec2(.5), PI * vTime * .05) * 3. * noisePix(uv * sin(vTime * .05) * 2.)) *  cos(vTime* .05), (sin(uv.y) * .5+ snoise(rotateUV(uv, vec2(.5), -PI * vTime * .05) * sin(vTime* .05))));
 
 
   vec2 rote = rotateUV(uv, vec2(.5), PI * vTime * .05);
@@ -376,43 +376,45 @@ void main(){
 
   float ySmoothMod = smoothMod(uv.y,.3,1.2);
 
+
+
   float smoothMix = (tan(t - atan(uv.x/uv.y*tan(t+uv.y))*2.)+1.0)/2.0;
 
     vec3 color = cosPalette( smoothMix);
 
-    uv.x+= mix(uv.x, xSmoothMod, smoothMix);
-  uv.y += mix(uv.y, ySmoothMod, 1.-smoothMix);
+    uv.x += mix(uv.x, xSmoothMod, smoothMix);
+    uv.y = mix(uv.y, ySmoothMod, 1.-smoothMix);
 
 
 
-  uvRipple(color.rg,1.9);
-    uv.x = dot(uv.x, uv.y + cos(vTime * .25));
+    uvRipple(color.rg,1.9);
+    color.r = dot(uv.x, uv.y + cos(vTime * .25));
     uv.y = dot(uv.y, uv.x + sin(vTime * .25));
-
+    pMod2(color.rg, vec2(.5));
     color.r = stroke(noisePix(uv * 20. * cnoise(uv1 *4.) * uv.y ), .4, .2) ;
     color.b = stroke(snoise(uv * 2. * cnoise(uv *1.) * uv.y ), .4, .2) ;
   //
-    uv2 =  brownConradyDistortion(uv2, -10., 10. * sin(vTime * .5));
-    uv1 =  brownConradyDistortion(uv2, -10., 10. * sin(vTime * .5));
-    color = mix(color, vec3(uv.x, uv.y, 1.),stroke(polySDF(uv2, 3.), .6, .5));
+    uv2 =  brownConradyDistortion(uv2, -10., 10. );
+    color.rg =  brownConradyDistortion(uv2, 10., -10. );
+    // color = mix(color, vec3(uv.x, uv.y, 1.),stroke(polySDF(uv2, 3.), .6, .5));
   // //
-    color = mix(color, vec3(0., uv.y, uv.x),stroke(polySDF(uv1, 3.), .5, 6.5));
-
-    color = mix(color, vec3(uv.y, 1., 1.),stroke(polySDF(uv, 30.), .5, .5));
+    // color = mix(color, vec3(0., uv.y, uv.x),stroke(polySDF(uv1, 3.), .5, 6.5));
+    //
+    // color = mix(color, vec3(uv.y, 1., 1.),stroke(polySDF(uv, 30.), .5, .5));
   //
 
     spin(color.rb, .5);
-  //   color += stroke(cnoise( uv2 *4. * cnoise(uv * 40.) ), .2, .8);
+    // color *= stroke(cnoise( uv2 *4. * cnoise(uv * 40.) ), .2, .8);
   //
     vec3 iri = hsb2rgb(vec3(color.x, color.y, uv.y *1.3));
-  //   pMod2(color.rg, vec2(.5));
+
     iri += sin(length(rote) * 4.0 + t);
   //
-    color = mix(color,iri,sin(t * sin(uv.y/uv.x)));
+    color = mix(color,iri,sin(t * sin(uv.y+uv.x)));
   //   //
-    color += mix(color, vec3(uv1.x,uv1.y,1.), stroke(cnoise( uv1 *14. * noisePix(uv1 * 4. + wiggly(uv.x + vTime * .05, uv.y + (vTime * .5) * .005, 2., .6, .5)) ), .5, .8));
+    // color += mix(color, vec3(uv1.x,uv1.y,1.), stroke(cnoise( uv1 *14. * noisePix(uv1 * 4. + wiggly(uv.x + vTime * .05, uv.y + (vTime * .5) * .005, 2., .6, .5)) ), .5, .8));
   //   //
-    // color = mix(vec3(stroke(noisePix(rote * 3. + snoise(uv * 1.) ), 1.2, .8), color.x, uv.y), vec3(iri.x), stroke(noisePix(rote * 19. * snoise(uv * 1.) ), 1.2, .8));
+    // color = mix(vec3(stroke(noisePix(uv * 3. + snoise(uv3 * 1.) ), 1.2, .8), color.x, uv3.y), vec3(iri.x), stroke(noisePix(uv3 * 19. * snoise(uv3 * 1.) ), 1.2, .8));
     gl_FragColor = vec4(color,alpha);
 
 

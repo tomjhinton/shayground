@@ -303,10 +303,10 @@ t = t * 0.15;
 vec2 uv = -1. + 2. * normCoord;
 
 // please play around with these numbers to get a better palette
-vec3 brightness = vec3(.6, length(uv), .9);
+vec3 brightness = vec3(sin(vTime), length(uv), cos(vTime));
 vec3 contrast = vec3(length(uv)*.5, PI, .5);
 vec3 osc = vec3(0.0,2.0,0.0);
-vec3 phase = vec3(100.,12.0,6.);
+vec3 phase = vec3(1.,12.0,6.);
 return brightness + contrast*cos( 6.28318*(osc*t+phase) );
 }
 float random (in vec2 st) {
@@ -337,16 +337,7 @@ float noisePix (in vec2 st) {
             (d - b) * u.x * u.y;
 }
 
-void main(){
-  // //
-  // vec2 uv = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
-  // vec2 uv1 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
-  // vec2 uv2 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
-  // vec2 uv3 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
-  // vec2 uv4 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
-
-  // vec2 uv = gl_FragCoord.xy / uResolution;
-  //
+void main() {
   vec2 uv = vUv;
   vec2 uv1 = vUv;
   vec2 uv2 = vUv;
@@ -354,66 +345,71 @@ void main(){
   vec2 uv4 = vUv;
 
 
-  vec4 tex = texture2D(uTexture, uv3);
+  // vec2 uv = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
+  // vec2 uv1 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
+  // vec2 uv2 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
+  // vec2 uv3 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
+  // vec2 uv4 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
+
 
   float slowTime = vTime * .05;
-  float t = vTime * .25;
+
   float alpha = 1.;
 
-    uv = vec2(uv.x+ noisePix(rotateUV(uv, vec2(.5), PI * vTime * .05) * noisePix(uv * sin(vTime * .05) * 10.)), (sin(uv.y) * .5+ snoise(rotateUV(uv, vec2(.5), -PI * vTime * .05) * 1.5)));
+
+vec2 rote = rotateUV(uv, vec2(.5), PI * vTime * .05);
+vec2 roteC = rotateUV(uv, vec2(.5), -PI * vTime * .05);
+float t = vTime ;
+float scale = 3. ;
+vec2 mouse = uMouse;
+vec2 bulge = vec2(0.);
+float d = 0.;
+int circlesArrLength = 40;
+vec3 circle = vec3 (.5,.5, 1.  );
+
+// uv.x += stroke(cnoise(rote * 10. * uv.x), .5,.5);
+// uv.y += stroke(cnoise(roteC *30. * uv.y), .5, .6);
+// uvRipple(uv, .09);
+for(int i=0; i < circlesArrLength; i++)
+{
+float growth = 0.001 +circle.z * 8.;
+float r = growth * .022;
+
+bulge += (uv ) * scale/float(circlesArrLength)  * pow((length(uv) ), .5);
+d += smoothstep(r, r*0.5 , length(uv -circle.xy )-r);
+    }
+uv = mix(uv * scale, bulge, d);
+// uv.y -= t;
+vec2 gv = fract(uv) - .5;
+vec2 id = floor(uv);
+
+uvRippleStatic(id, .9);
+float pattern = mod(id.x+id.y, 2.);
+float pattern2 = mod(id.x+id.y, 3.);
+float pattern3 = mod(id.x+id.y, 14.);
+vec3 color = vec3(pattern);
 
 
-  vec2 rote = rotateUV(uv, vec2(.5), PI * vTime * .05);
-  vec2 roteC = rotateUV(uv, vec2(.5), -PI * vTime * .05);
+//
 
+vec3 pat1 = vec3(stroke(noisePix(rote * 19. * snoise(uv1) ), .2, .8), stroke(noisePix(rote * 19. * snoise(uv1) ), .2, .8), stroke(cnoise(rote * 59. * snoise(uv1) ), .2, .8) );
+vec3 pat2 = vec3(1.-stroke(noisePix(rote * 19. * snoise(rote) ), .2, .8));
 
-  vec2 rote1 = rotateUV(uv1, vec2(.5), PI * vTime * .02);
-  vec2 roteC1 = rotateUV(uv1, vec2(.5), -PI * vTime * .02);
+color = mix(pat1, pat2, pattern);
+color = mix(color, vec3(cnoise(roteC * 4.)), pattern2);
+color = mix(1.-color, vec3(cnoise(uv * 3. * uv.y), cnoise(uv * 7. * uv.y), cnoise(uv * 13. * uv.y)) , pattern3);
 
+vec3 iri = hsb2rgb(vec3(color.x, color.y, uv.y *.3));
+// pMod2(color.zy, vec2(.5));
+iri += vec3(tan(length(iri.xy) * 4.0 + t));
 
-
-  float xSmoothMod = smoothMod(uv.x,.3,8.2);
-
-  float ySmoothMod = smoothMod(uv.y,.3,1.2);
-
-  float smoothMix = (tan(t - atan(uv.x/uv.y*tan(t+uv.y))*2.)+1.0)/2.0;
-
-    vec3 color = cosPalette( smoothMix);
-
-    uv.x+= mix(uv.x, xSmoothMod, smoothMix);
-  uv.y += mix(uv.y, ySmoothMod, 1.-smoothMix);
+color = mix(color, iri, pattern2);
+color *= mix(color, iri, pattern3);
 
 
 
-  uvRipple(color.rg,1.9);
-    uv.x = dot(uv.x, uv.y + cos(vTime * .25));
-    uv.y = dot(uv.y, uv.x + sin(vTime * .25));
+ gl_FragColor = vec4(color, 1.);
 
-    color.r = stroke(noisePix(uv * 20. * cnoise(uv1 *4.) * uv.y ), .4, .2) ;
-    color.b = stroke(snoise(uv * 2. * cnoise(uv *1.) * uv.y ), .4, .2) ;
-  //
-    uv2 =  brownConradyDistortion(uv2, -10., 10. * sin(vTime * .5));
-    uv1 =  brownConradyDistortion(uv2, -10., 10. * sin(vTime * .5));
-    color = mix(color, vec3(uv.x, uv.y, 1.),stroke(polySDF(uv2, 3.), .6, .5));
-  // //
-    color = mix(color, vec3(0., uv.y, uv.x),stroke(polySDF(uv1, 3.), .5, 6.5));
-
-    color = mix(color, vec3(uv.y, 1., 1.),stroke(polySDF(uv, 30.), .5, .5));
-  //
-
-    spin(color.rb, .5);
-  //   color += stroke(cnoise( uv2 *4. * cnoise(uv * 40.) ), .2, .8);
-  //
-    vec3 iri = hsb2rgb(vec3(color.x, color.y, uv.y *1.3));
-  //   pMod2(color.rg, vec2(.5));
-    iri += sin(length(rote) * 4.0 + t);
-  //
-    color = mix(color,iri,sin(t * sin(uv.y/uv.x)));
-  //   //
-    color += mix(color, vec3(uv1.x,uv1.y,1.), stroke(cnoise( uv1 *14. * noisePix(uv1 * 4. + wiggly(uv.x + vTime * .05, uv.y + (vTime * .5) * .005, 2., .6, .5)) ), .5, .8));
-  //   //
-    // color = mix(vec3(stroke(noisePix(rote * 3. + snoise(uv * 1.) ), 1.2, .8), color.x, uv.y), vec3(iri.x), stroke(noisePix(rote * 19. * snoise(uv * 1.) ), 1.2, .8));
-    gl_FragColor = vec4(color,alpha);
 
 
 }

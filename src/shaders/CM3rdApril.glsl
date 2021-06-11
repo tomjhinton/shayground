@@ -274,7 +274,7 @@ vec2 brownConradyDistortion(in vec2 uv, in float k1, in float k2)
     return uv;
 }
 
-#define PHI (sqrt(5)*0.5 + 0.5)
+#define PHI (sqrt(5.)*0.5 + 0.5)
 
 // https://math.stackexchange.com/questions/2491494/does-there-exist-a-smooth-approximation-of-x-bmod-y
 // found this equation and converted it to GLSL, usually e is supposed to be squared but in this case I like the way it looks as 0 //idk
@@ -303,10 +303,10 @@ t = t * 0.15;
 vec2 uv = -1. + 2. * normCoord;
 
 // please play around with these numbers to get a better palette
-vec3 brightness = vec3(.6, length(uv), .9);
+vec3 brightness = vec3(sin(vTime), length(uv), cos(vTime));
 vec3 contrast = vec3(length(uv)*.5, PI, .5);
 vec3 osc = vec3(0.0,2.0,0.0);
-vec3 phase = vec3(100.,12.0,6.);
+vec3 phase = vec3(1.,12.0,6.);
 return brightness + contrast*cos( 6.28318*(osc*t+phase) );
 }
 float random (in vec2 st) {
@@ -337,83 +337,157 @@ float noisePix (in vec2 st) {
             (d - b) * u.x * u.y;
 }
 
-void main(){
-  // //
-  // vec2 uv = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
-  // vec2 uv1 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
-  // vec2 uv2 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
-  // vec2 uv3 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
-  // vec2 uv4 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
+float add(float a, float b) {
+  return min(a, b);
+}
 
-  // vec2 uv = gl_FragCoord.xy / uResolution;
-  //
-  vec2 uv = vUv;
-  vec2 uv1 = vUv;
-  vec2 uv2 = vUv;
-  vec2 uv3 = vUv;
-  vec2 uv4 = vUv;
+const int RayMarch_Max_Steps = 400;
+const float RAYMARCH_Max_Dist = 50.;
+const float EPSILON = 0.00001;
+
+float sdCappedTorus(in vec3 p, in vec2 sc, in float ra, in float rb)
+{
+  p.x = abs(p.x);
+  float k = (sc.y*p.x>sc.x*p.y) ? dot(p.xy,sc) : length(p.xy);
+  return sqrt( dot(p,p) + ra*ra - 2.0*ra*k ) - rb;
+}
+
+float sdBoxFrame( vec3 p, vec3 b, float e )
+{
+  p = abs(p  )-b;
+  vec3 q = abs(p+e)-e;
+  return min(min(
+      length(max(vec3(p.x,q.y,q.z),0.0))+min(max(p.x,max(q.y,q.z)),0.0),
+      length(max(vec3(q.x,p.y,q.z),0.0))+min(max(q.x,max(p.y,q.z)),0.0)),
+      length(max(vec3(q.x,q.y,p.z),0.0))+min(max(q.x,max(q.y,p.z)),0.0));
+}
+
+mat4 rotationMatrix(vec3 axis, float angle) {
+    axis = normalize(axis);
+    float s = sin(angle);
+    float c = cos(angle);
+    float oc = 1.0 - c;
+
+    return mat4(oc * axis.x * axis.x + c,           oc * axis.x * axis.y - axis.z * s,  oc * axis.z * axis.x + axis.y * s,  0.0,
+                oc * axis.x * axis.y + axis.z * s,  oc * axis.y * axis.y + c,           oc * axis.y * axis.z - axis.x * s,  0.0,
+                oc * axis.z * axis.x - axis.y * s,  oc * axis.y * axis.z + axis.x * s,  oc * axis.z * axis.z + c,           0.0,
+                0.0,                                0.0,                                0.0,                                1.0);
+}
+
+vec3 rotate(vec3 v, vec3 axis, float angle) {
+  mat4 m = rotationMatrix(axis, angle);
+  return (m * vec4(v, 1.0)).xyz;
+}
+
+float scene(vec3 pos){
+
+  vec3 rote = rotate(vec3(pos.x, pos.y, pos.z+ 1.5), vec3(0., 1., 1.5), PI * vTime * .5);
+
+  vec3 rote2 = rotate(vec3(pos.x, pos.y, pos.z+ 1.5), vec3(0., 1.2, 1.2), -PI * vTime * .5);
+
+    vec3 rote3 = rotate(vec3(pos.x, pos.y, pos.z+ 1.5), vec3(0., 1.1, .8), -PI * vTime * .4);
+
+  float BoxFrame =  sdBoxFrame( vec3(rote.x, rote.y, rote.z + 1.5),
+   vec3(1.), //bounds,
+   .11);  //thickness);
+
+   float BoxFrame2 =  sdBoxFrame( vec3(rote2.x, rote2.y, rote2.z + 1.5),
+    vec3(1.), //bounds,
+    .1);  //thickness);
+
+    float BoxFrame3 =  sdBoxFrame( vec3(rote3.x, rote3.y, rote3.z + 1.5),
+     vec3(1.), //bounds,
+     .1);  //thickness);
 
 
-  vec4 tex = texture2D(uTexture, uv3);
+  float cappedTorus =   sdCappedTorus(vec3(rote2.x, rote2.y, rote2.z+ 1.5),
+  vec2(0.),//size,
+    .8, //radius,
+     .14); //radius caps)
 
-  float slowTime = vTime * .05;
-  float t = vTime * .25;
-  float alpha = 1.;
-
-    uv = vec2(uv.x+ noisePix(rotateUV(uv, vec2(.5), PI * vTime * .05) * noisePix(uv * sin(vTime * .05) * 10.)), (sin(uv.y) * .5+ snoise(rotateUV(uv, vec2(.5), -PI * vTime * .05) * 1.5)));
+  return  BoxFrame*  BoxFrame2* BoxFrame3;
+}
 
 
+vec4 raymarch(vec3 rayDir, vec3 rayStep){
+  vec2 uv = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
+  // vec2 uv = vUv;
   vec2 rote = rotateUV(uv, vec2(.5), PI * vTime * .05);
   vec2 roteC = rotateUV(uv, vec2(.5), -PI * vTime * .05);
 
+  //define to start step
+  //reset to 0 stops
 
-  vec2 rote1 = rotateUV(uv1, vec2(.5), PI * vTime * .02);
-  vec2 roteC1 = rotateUV(uv1, vec2(.5), -PI * vTime * .02);
+  float currentDist = 0. ;
+  float rayDepth = 0.;
+  vec3 rayLength = rayDir;
 
+  vec3 color = mix(vec3(uv.x, uv.y, 1.), vec3(uv.y, uv.x, 1.), rayDir);
+  vec4 shapeColor = vec4(color, 1.);
 
-
-  float xSmoothMod = smoothMod(uv.x,.3,8.2);
-
-  float ySmoothMod = smoothMod(uv.y,.3,1.2);
-
-  float smoothMix = (tan(t - atan(uv.x/uv.y*tan(t+uv.y))*2.)+1.0)/2.0;
-
-    vec3 color = cosPalette( smoothMix);
-
-    uv.x+= mix(uv.x, xSmoothMod, smoothMix);
-  uv.y += mix(uv.y, ySmoothMod, 1.-smoothMix);
+  vec4 bgColor = vec4(vec3(stroke(cnoise(rote * 4. * cnoise(roteC * 8.)), .5, .5)), 1.);
 
 
 
-  uvRipple(color.rg,1.9);
-    uv.x = dot(uv.x, uv.y + cos(vTime * .25));
-    uv.y = dot(uv.y, uv.x + sin(vTime * .25));
+  //shooting the ray
+  for(int i = 0; i < RayMarch_Max_Steps; i ++){
+    //steps travveled
+    currentDist = scene(rayLength);
+    rayDepth+= currentDist;
+    rayLength +=(currentDist*rayStep);
 
-    color.r = stroke(noisePix(uv * 20. * cnoise(uv1 *4.) * uv.y ), .4, .2) ;
-    color.b = stroke(snoise(uv * 2. * cnoise(uv *1.) * uv.y ), .4, .2) ;
-  //
-    uv2 =  brownConradyDistortion(uv2, -10., 10. * sin(vTime * .5));
-    uv1 =  brownConradyDistortion(uv2, -10., 10. * sin(vTime * .5));
-    color = mix(color, vec3(uv.x, uv.y, 1.),stroke(polySDF(uv2, 3.), .6, .5));
-  // //
-    color = mix(color, vec3(0., uv.y, uv.x),stroke(polySDF(uv1, 3.), .5, 6.5));
+    if(currentDist < EPSILON){
+      //We're inside the scene --  this is where the magic happens
+      return shapeColor;
+    }
+    if(rayDepth > RAYMARCH_Max_Dist){
+      // we've gone too far
+      return bgColor;
+    }
+  }
 
-    color = mix(color, vec3(uv.y, 1., 1.),stroke(polySDF(uv, 30.), .5, .5));
-  //
+  return bgColor;
+}
 
-    spin(color.rb, .5);
-  //   color += stroke(cnoise( uv2 *4. * cnoise(uv * 40.) ), .2, .8);
-  //
-    vec3 iri = hsb2rgb(vec3(color.x, color.y, uv.y *1.3));
-  //   pMod2(color.rg, vec2(.5));
-    iri += sin(length(rote) * 4.0 + t);
-  //
-    color = mix(color,iri,sin(t * sin(uv.y/uv.x)));
-  //   //
-    color += mix(color, vec3(uv1.x,uv1.y,1.), stroke(cnoise( uv1 *14. * noisePix(uv1 * 4. + wiggly(uv.x + vTime * .05, uv.y + (vTime * .5) * .005, 2., .6, .5)) ), .5, .8));
-  //   //
-    // color = mix(vec3(stroke(noisePix(rote * 3. + snoise(uv * 1.) ), 1.2, .8), color.x, uv.y), vec3(iri.x), stroke(noisePix(rote * 19. * snoise(uv * 1.) ), 1.2, .8));
-    gl_FragColor = vec4(color,alpha);
+
+
+void main() {
+  vec2 uv = vUv;
+  // vec2 uv1 = vUv;
+  // vec2 uv2 = vUv;
+  // vec2 uv3 = vUv;
+  // vec2 uv4 = vUv;
+
+
+  // vec2 uv = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
+  vec2 uv1 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
+  vec2 uv2 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
+  vec2 uv3 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
+  vec2 uv4 = (gl_FragCoord.xy - uResolution * .5) / uResolution.yy + 0.5;
+
+
+  float slowTime = vTime * .05;
+
+  float alpha = 1.;
+
+
+vec2 rote = rotateUV(uv, vec2(.5), PI * vTime * .05);
+vec2 roteC = rotateUV(uv, vec2(.5), -PI * vTime * .05);
+float t = vTime ;
+
+// X, Y, Z
+vec3   camPos = vec3(0., 0., .1);
+
+vec3 rayDir = normalize(vec3(uv -.5, -.2)); // DOF
+vec3 rayStep = camPos + rayDir;
+
+
+
+vec3 color = vec3(uv.x, uv.y, 1.);
+
+
+ gl_FragColor = vec4(raymarch(rayDir, rayStep));
+
 
 
 }
